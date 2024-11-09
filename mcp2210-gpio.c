@@ -127,7 +127,7 @@ int mcp2210_gpio_probe(struct mcp2210_device *dev)
 	gpio->exported		= 0;
 #endif
 
-	ret = gpiochip_add(gpio);
+	ret = gpiochip_add_data(gpio, NULL);
 	if (ret) {
 		mcp2210_err("Failed to register GPIOs: %d", ret);
 		return ret;
@@ -372,7 +372,7 @@ static int mcp2210_get(struct gpio_chip *chip, unsigned offset)
 	int ret;
 	unsigned long now = jiffies;
 	unsigned long last_poll;
-	u32 uninitialized_var(stale_usecs);
+	u32 stale_usecs = 0;
 
 	BUG_ON(offset >= MCP2210_NUM_PINS);
 

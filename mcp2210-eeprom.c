@@ -30,7 +30,7 @@
 static int eeprom_submit_prepare(struct mcp2210_cmd *cmd_head);
 static int eeprom_complete_urb(struct mcp2210_cmd *cmd_head);
 
-const static struct mcp2210_cmd_type mcp2210_cmd_type_eeprom = {
+static const struct mcp2210_cmd_type mcp2210_cmd_type_eeprom = {
 	.id = MCP2210_CMD_TYPE_EEPROM,
 	.submit_prepare = eeprom_submit_prepare,
 	.complete_urb = eeprom_complete_urb,

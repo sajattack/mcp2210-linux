@@ -1950,7 +1950,7 @@ void dump_spi_message(const char *level, unsigned indent, const char *start,
 	printk("%s%s%s%p struct spi_message {\n"
 	       "%s  .transfers     = {.next = %p, .prev = %p}\n"
 	       "%s  .spi           = %p\n"
-	       "%s  .is_dma_mapped = %u\n"
+	       //"%s  .is_dma_mapped = %u\n"
 	       "%s  .complete      = %p\n"
 	       "%s  .context       = %p\n"
 	       "%s  .actual_length = %u\n"
@@ -1961,7 +1961,7 @@ void dump_spi_message(const char *level, unsigned indent, const char *start,
 	       level, ind, start, msg,
 	       ind, msg->transfers.next, msg->transfers.prev,
 	       ind, msg->spi,
-	       ind, msg->is_dma_mapped,
+	       //ind, msg->is_dma_mapped,
 	       ind, msg->complete,
 	       ind, msg->context,
 	       ind, msg->actual_length,
@@ -1991,9 +1991,9 @@ void dump_spi_device(const char *level, unsigned indent, const char *start,
 	       "%s}\n",
 	       level, ind, start, spi_dev,
 	       ind,
-	       ind, spi_dev->master,
+	       ind, spi_dev->controller,
 	       ind, spi_dev->max_speed_hz,
-	       ind, spi_dev->chip_select,
+	       ind, spi_dev->chip_select[0],
 	       ind, spi_dev->mode,
 	       ind, spi_dev->bits_per_word,
 	       ind, spi_dev->irq,

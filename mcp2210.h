@@ -42,6 +42,7 @@
 # include <linux/usb.h>
 # include <linux/spi/spi.h>
 # include <linux/gpio.h>
+# include <linux/gpio/driver.h>
 # include <linux/timer.h>
 # include <linux/jiffies.h>
 
@@ -940,7 +941,7 @@ struct mcp2210_device {
 #endif
 
 #ifdef CONFIG_MCP2210_SPI
-	struct spi_master *spi_master;
+	struct spi_controller *spi_master;
 	struct spi_device *chips[MCP2210_NUM_PINS];
 #else
 	char spi_master; /* HACK: spi_master still referenced when disabeld */

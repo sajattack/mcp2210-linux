@@ -496,7 +496,7 @@ void calculate_spi_settings(struct mcp2210_spi_xfer_settings *dest,
 		BUG_ON(!dev->config);
 		BUG_ON(!spi);
 		BUG_ON(!xfer);
-		BUG_ON(dev->spi_master != spi->master);
+		BUG_ON(dev->spi_master != spi->controller);
 		BUG_ON(pin > 8);
 	}
 

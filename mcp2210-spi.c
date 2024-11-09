@@ -62,12 +62,12 @@ const struct mcp2210_cmd_type mcp2210_cmd_type_spi = {
 
 static inline struct mcp2210_device *mcp2210_spi2dev(struct spi_device *spi)
 {
-	return *((struct mcp2210_device **)spi_master_get_devdata(spi->master));
+	return *((struct mcp2210_device **)spi_controller_get_devdata(spi->controller));
 }
 
-static inline struct mcp2210_device *mcp2210_spi_master2dev(struct spi_master *master)
+static inline struct mcp2210_device *mcp2210_spi_master2dev(struct spi_controller *master)
 {
-	return *((struct mcp2210_device **)spi_master_get_devdata(master));
+	return *((struct mcp2210_device **)spi_controller_get_devdata(master));
 }
 
 /******************************************************************************
@@ -97,7 +97,7 @@ struct async_spi_probe {
  */
 // may sleep
 int mcp2210_spi_probe(struct mcp2210_device *dev) {
-	struct spi_master *master; /* just a local for code brievity */
+	struct spi_controller *master; /* just a local for code brievity */
 	int ret;
 	struct async_spi_probe *async_probe;
 
@@ -122,7 +122,7 @@ int mcp2210_spi_probe(struct mcp2210_device *dev) {
 		return -ENOMEM;
 
 	/* we only need a pointer to the struct mcp2210_device */
-	*((struct mcp2210_device **)spi_master_get_devdata(master)) = dev;
+	*((struct mcp2210_device **)spi_controller_get_devdata(master)) = dev;
 
 #ifdef HAVE_SPI_MASTER_SPEED
 	master->max_speed_hz = MCP2210_MAX_SPEED;
@@ -151,10 +151,10 @@ int mcp2210_spi_probe(struct mcp2210_device *dev) {
 
 	memset(dev->chips, 0, sizeof(dev->chips));
 
-	ret = spi_register_master(master);
+	ret = spi_register_controller(master);
 
 	if (ret) {
-		spi_master_put(master);
+		spi_controller_put(master);
 		dev->spi_master = NULL;
 
 		return ret;
@@ -172,7 +172,7 @@ int mcp2210_spi_probe(struct mcp2210_device *dev) {
 static void mcp2210_spi_probe_async(struct work_struct *work) {
 	struct async_spi_probe *async_probe = (void*)work;
 	struct mcp2210_device *dev = async_probe->dev;
-	struct spi_master *master = dev->spi_master;
+	struct spi_controller *master = dev->spi_master;
 	int ret;
 	unsigned i;
 
@@ -193,7 +193,7 @@ static void mcp2210_spi_probe_async(struct work_struct *work) {
 		}
 
 		chip->max_speed_hz  = cfg->spi.max_speed_hz;
-		chip->chip_select   = i;
+		chip->chip_select[0]   = i;
 		chip->mode	    = cfg->spi.mode;
 		chip->bits_per_word = cfg->spi.bits_per_word;
 
@@ -239,7 +239,7 @@ error:
 	mcp2210_err("SPI device failed to probe: %d\n", ret);
 	dev->spi_master = NULL;
 	memset(dev->chips, 0, sizeof(dev->chips));
-	spi_unregister_master(master);
+	spi_unregister_controller(dev->spi_master);
 	kfree(async_probe);
 
 	return;// ret;
@@ -251,7 +251,7 @@ void mcp2210_spi_remove(struct mcp2210_device *dev)
 		return;
 
 	mcp2210_info();
-	spi_unregister_master(dev->spi_master);
+	spi_unregister_controller(dev->spi_master);
 
 	dev->spi_master = NULL;
 }
@@ -262,7 +262,7 @@ static void mcp2210_spi_cleanup(struct spi_device *spi)
 {
 	struct mcp2210_device *dev = mcp2210_spi2dev(spi);
 
-	mcp2210_info("pin %d", spi->chip_select);
+	mcp2210_info("pin %d", spi->chip_select[0]);
 
 	/* Do we have any cleanup to do? */
 }
@@ -302,7 +302,7 @@ static int is_spi_in_flight(const struct mcp2210_device *dev, u8 pin)
 	if (cmd_head && cmd_head->type == &mcp2210_cmd_type_spi) {
 		const struct mcp2210_cmd_spi_msg *cmd = (void *)cmd_head;
 
-		return cmd->spi_in_flight && cmd->spi->chip_select == pin;
+		return cmd->spi_in_flight && cmd->spi->chip_select[0] == pin;
 	}
 	return 0;
 }
@@ -312,7 +312,7 @@ static int mcp2210_spi_setup(struct spi_device *spi)
 {
 	struct mcp2210_device *dev = mcp2210_spi2dev(spi);
 	unsigned long irqflags;
-	u8 pin = spi->chip_select;
+	u8 pin = spi->chip_select[0];
 	int ret = 0;
 
 	mcp2210_info("spi_in_flight: %d, cur_spi_config: %d",
@@ -352,7 +352,7 @@ static int mcp2210_spi_setup(struct spi_device *spi)
 static int queue_msg(struct mcp2210_device *dev, struct spi_message *msg,
 		     bool can_sleep)
 {
-	u8 pin = msg->spi->chip_select;
+	u8 pin = msg->spi->chip_select[0];
 	struct mcp2210_cmd_spi_msg *cmd;
 	struct list_head *pos;
 	struct mcp2210_pin_config *pin_config = &dev->config->pins[pin];
@@ -517,7 +517,7 @@ static int spi_prepare_device(struct mcp2210_cmd_spi_msg *cmd)
 {
 	struct mcp2210_device *dev = cmd->head.dev;
 	struct mcp2210_spi_xfer_settings needed;
-	u8 pin = cmd->spi->chip_select;
+	u8 pin = cmd->spi->chip_select[0];
 
 	 /* If we have an active control command it probably means that this is
 	  * a retry, (failed URB or the device was busy) so we need to retry. */
@@ -590,7 +590,7 @@ static int spi_submit_prepare(struct mcp2210_cmd *cmd_head)
 
 	BUG_ON(!cmd_head->dev);
 	dev = cmd_head->dev;
-	pin = cmd->spi->chip_select;
+	pin = cmd->spi->chip_select[0];
 	req = dev->eps[EP_OUT].buffer;
 
 	mcp2210_debug("pin %hhu\n", pin);
@@ -709,7 +709,7 @@ static int spi_complete_urb(struct mcp2210_cmd *cmd_head)
 //	long urb_duration = jiffdiff(now, dev->eps[EP_OUT].submit_time);
 //	int bytes_pending;
 	long expected_time_usec = 0;
-	u8 pin = cmd->spi->chip_select;
+	u8 pin = cmd->spi->chip_select[0];
 	u8 len;
 
 	if (IS_ENABLED(CONFIG_MCP2210_DEBUG)) {
